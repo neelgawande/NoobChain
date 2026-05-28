@@ -1,0 +1,61 @@
+what this is: a miniature blockchain network core with persistence, wallets, signed transactions, mining, validation, and an API layer.
+
+the main blockchain backend works like this:
+
+1. The main blockchain consists of blocks that are stored in a levelDB database. Each block consists of:
+    timestamp, nonce, merkle root, own hash, previous hash, list of transactions
+
+2. When the backend starts:
+    if a valid blockchain exists:
+        a. levelDB opens
+        b. Blockchain object is created
+        c. blockchain initializes
+        d. chain loads from disk
+        e. state loads from disk
+
+    if no valid blockchain exists:
+        a. genesis block is created
+        b. chain height becomes 0
+
+3. If using CLI: App enters loop. Each of the commands does:
+    a. "add" -> adds a new user after asking for name and initial balance.
+                createWallet() is called
+                inside StateManager, a new wallet is generated using ECDSA cryptography, which creates public and private keys
+                the wallet is then stored inside application state. -> "state.wallets[address]". The state is saved in levelDB.
+    
+    b. "tx" -> asks for sender, receiver names and amount to transfer.
+               loads sender and receiver wallets, checks balances, creates Transaction object
+               each Transaction contains: sender, receiver, amount, nonce *, timestamp, txid, signature
+               tx.signTransaction(sender.privateKey) -> creates a digital signature using the sender's private key, to prove that sender authorized the transfer.
+               addTransaction(tx) -> validates the transaction, and adds it to the pending queue
+               validates the following: tx structure, signature, txid, sender existence, receiver existence
+               if valid, transaction enters mempool (pendingTransactions queue)
+
+               * nonce is important, it prevents replay attacks and transaction duplication. every wallet tracks how many transcations have been made using nonce. 
+    
+    c. "mine" -> application begins block creation
+                 i. transactions are pulled from mempool (according to the block's limit)
+                 ii. latest block is loaded, new block is created
+                 iii. block constructor computes merkle root and initial hash
+                 iv. mining * begins. Mining repeatedly changes nonce until block hash satisfies the difficulty rule. (eg. 000000000.... for difficulty of 9)
+                 
+                 block validation begins after mining is complete. validation checks:
+                    i. block hash correctness
+                    ii. previous hash linkage
+                    iii. merkle root correctness
+                    iv. difficulty correctness
+                    v. duplicate txids
+                    vi. signatures
+                    vii. balances
+                    viii. nonce sequencing
+                
+                  the validator simulates transaction execution on a temporary copy of state. if all txids are valid:
+                  -> balances update, sender nonce increment, global state is saved, block is saved, chain height is incremented by 1
+                 
+                  * mining is brute force guessing (of nonce) until a valid hash appears
+
+
+IMP: Our app has two major persistent systems:
+    a. the chain, where the blocks are stored
+    b. the current global state, which stores details of all the wallets (wallet balances, nonces, public & private keys, wallet existence)
+
