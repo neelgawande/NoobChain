@@ -1,34 +1,25 @@
 import {useEffect,useState} from "react"
-import axios from "axios"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import MainLayout from "./layouts/MainLayout"
+import Dashboard from "./pages/Dashboard"
+import Explorer from "./pages/Explorer"
+import SendTransaction from "./pages/SendTransaction"
 
 function App() {
-    const [chain,setChain] = useState([])
-
-    useEffect(()=>{
-        async function fetchChain() {
-            try{
-                const res = await axios.get("http://localhost:3000/chain")
-                setChain(res.data)
-            }catch(err){
-                console.error(err)
-            }
-        }
-
-        fetchChain()
-    },[])
 
     return (
-        <div>
-            <h1>NoobChain Explorer</h1>
+        <>
 
-            {chain.map(block=>(
-                <div key={block.height} style={{border:"1px solid black",margin:"10px",padding:"10px"}}>
-                    <p>Height: {block.height}</p>
-                    <p>Hash: {block.hash}</p>
-                    <p>Transactions: {block.transactions.length}</p>
-                </div>
-            ))}
-        </div>
+         <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<MainLayout/>}>
+                    <Route index element={<Dashboard/>}/>
+                    <Route path="explorer" element={<Explorer/>}/>
+                    <Route path="send" element={<SendTransaction/>}/>
+                </Route>
+            </Routes>
+        </BrowserRouter>
+        </>
     )
 }
 
