@@ -12,6 +12,8 @@
   "dependencies": {
     "@rolldown/binding-win32-x64-msvc": "^1.0.2",
     "axios": "^1.16.1",
+    "crypto-js": "^4.2.0",
+    "elliptic": "^6.6.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1"

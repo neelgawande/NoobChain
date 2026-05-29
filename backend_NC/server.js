@@ -7,7 +7,6 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 
-// Guard middleware: rejects all requests until the blockchain has finished loading from DB
 app.use((req, res, next) => {
     if (!isReady()) {
         return res.status(503).json({ ok: false, reason: "blockchain initializing, try again shortly" })
@@ -15,7 +14,6 @@ app.use((req, res, next) => {
     next()
 })
 
-// still gonna keep this for backwards compatibility. Even if we aren't using this in practice
 app.post("/init", async (req, res) => {
     try {
         res.json({ ok: true, height: chain.height })
@@ -59,7 +57,12 @@ app.post("/tx", async (req, res) => {
         const tx = new Transaction(from, to, amount, nonce)
 
         if (privateKey) {
-            tx.signTransaction(privateKey)
+            // Normalize the PEM key — when pasted from a JSON value or typed manually,
+            // literal "\n" two-character sequences arrive instead of real newlines.
+            // Node's crypto decoder requires actual newlines in the PEM header,
+            // footer, and between base64 lines or it throws "unsupported" decoder error.
+            const normalizedKey = privateKey.replace(/\\n/g, "\n").trim()
+            tx.signTransaction(normalizedKey)
         } else if (signature) {
             tx.signature = signature
         } else {
@@ -112,15 +115,12 @@ app.get("/wallet/:address", async (req, res) => {
     }
 })
 
-// Consolidated stats endpoint: fetches the chain once and derives everything
-// from it. Avoids the bug where separate endpoints each called getFullChain()
-// and could theoretically return inconsistent snapshots.
 app.get("/stats", async (req, res) => {
     try {
         const data = await chain.getFullChain()
         const totalTransactions = data.reduce((sum, block) => sum + (block.transactions?.length || 0), 0)
         res.json({
-            totalBlocks: data.length,           // chain.height + 1, derived from actual loaded data
+            totalBlocks: data.length,
             totalTransactions,
             pendingTransactions: chain.pendingTransactions.length,
             totalWallets: Object.keys(chain.stateManager.state.wallets).length,
@@ -132,7 +132,6 @@ app.get("/stats", async (req, res) => {
     }
 })
 
-// Individual stats routes kept for backwards compatibility with any existing frontend calls
 app.get("/stats/blocks", async (req, res) => {
     try {
         const data = await chain.getFullChain()
@@ -176,11 +175,7 @@ app.get("/stats/difficulty", (req, res) => {
     }
 })
 
-app.get("/debug/raw-chain", async (req, res) => {
-    res.json(await chain.getFullChain())
-})
 
-// Wait for the blockchain to finish loading before accepting connections. So that the very first request never hits empty chain.
 initPromise.then(() => {
     app.listen(3000, () => console.log("API running on 3000, chain height:", chain.height))
 })

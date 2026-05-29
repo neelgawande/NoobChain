@@ -48,6 +48,18 @@ export default function MainLayout(){
                     Send
                 </NavLink>
 
+                <NavLink
+                    to="/mine"
+                    className={({isActive})=>
+                        `pt-2 transition ${
+                            isActive
+                            ? "text-pink-300 underline"
+                            : "hover:text-pink-300 hover:underline"
+                        }`
+                    }>
+                    Mine
+                </NavLink>
+
             </nav>
 
             <main className="p-5">
