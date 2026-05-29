@@ -43,8 +43,6 @@ class Blockchain {
         const duplicate = this.pendingTransactions.find(t => t.txid === tx.txid)
         if (duplicate) return { ok: false, reason: "duplicate txid" }
 
-        // Validate nonce: must be exactly sender.nonce + 1 + number of
-        // transactions from this sender already sitting in the mempool
         const pendingFromSender = this.pendingTransactions.filter(t => t.from === tx.from).length
         const expectedNonce = sender.nonce + 1 + pendingFromSender
         if (tx.nonce !== expectedNonce) {
@@ -94,7 +92,6 @@ class Blockchain {
             this.height = newBlock.height
 
             console.log("Block accepted")
-
         } catch (err) {
             console.log("Block rejected:", err.message)
             this.pendingTransactions.unshift(...selectedTransactions)
@@ -116,7 +113,7 @@ class Blockchain {
             this.height = parsed
             console.log("Blockchain loaded from DB, height:", this.height)
         } catch {
-            console.log("No blockchain found")
+            console.log("No blockchain found, creating genesis block")
             const genesis = this.createGenesisBlock()
             await this.saveBlock(genesis)
             this.height = 0
@@ -124,9 +121,12 @@ class Blockchain {
     }
 
     async getFullChain() {
-        let chain = []
+        const chain = []
         for (let i = 0; i <= this.height; i++) {
             const raw = await db.get(`block:${i}`)
+            // Always reconstruct proper Block instances from raw DB data.
+            // Returning plain objects breaks calculateHash(), merkle verification,
+            // and any code that expects Transaction class instances inside blocks.
             chain.push(Block.from(raw))
         }
         return chain
@@ -169,8 +169,6 @@ class Blockchain {
                 return { ok: false, reason: "invalid signature" }
             }
 
-            // Validate nonce against the snapshot state (mutated per tx in this loop
-            // so sequential txs from the same sender are checked correctly)
             if (tx.nonce !== sender.nonce + 1) {
                 return { ok: false, reason: "invalid nonce" }
             }
@@ -188,6 +186,8 @@ class Blockchain {
     }
 
     async isChainValid() {
+        // getFullChain() now returns proper Block instances so calculateHash()
+        // and generateMerkleRoot() work correctly here
         const chain = await this.getFullChain()
 
         for (let i = 1; i < chain.length; i++) {
