@@ -1,0 +1,29 @@
+# Dependencies
+backend_NC/node_modules/
+frontend_NC/node_modules/
+
+# Environment files
+backend_NC/.env
+backend_NC/.env.local
+frontend_NC/.env
+frontend_NC/.env.local
+
+# Logs
+backend_NC/logs/
+frontend_NC/logs/
+*.log
+
+# Coverage reports
+backend_NC/coverage/
+frontend_NC/coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code personal settings
+.vscode/settings.json
+
+# Local blockchain/database storage
+backend_NC/storage/
+frontend_NC/storage/

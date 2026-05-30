@@ -9,16 +9,21 @@ class Wallet {
         this.privateKey = privateKey
     }
 
-    static generate(address,balance=0) {
-        const pair = crypto.generateKeyPairSync("ec",{ namedCurve:"secp256k1" })
-        const publicKey = pair.publicKey.export({
+    static generate(balance=0){
+        const pair=crypto.generateKeyPairSync("ec",{namedCurve:"secp256k1"})
+        const publicKey=pair.publicKey.export({
             type:"spki",
             format:"pem"
         })
-        const privateKey = pair.privateKey.export({
+        const privateKey=pair.privateKey.export({
             type:"pkcs8",
             format:"pem"
         })
+        const address="NC"+crypto
+            .createHash("sha256")
+            .update(publicKey)
+            .digest("hex")
+            .slice(0,40)
         return new Wallet(address,balance,0,publicKey,privateKey)
     }
 

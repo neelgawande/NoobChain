@@ -34,13 +34,19 @@ class StateManager {
         return !!this.state.wallets[address]
     }
 
-    createWallet(address, balance = 0) {
-        if (this.walletExists(address)) {
-            return { ok: false, reason: "Wallet already exists" }
+    createWallet(balance=0){
+        const wallet=Wallet.generate(balance)
+        if(this.walletExists(wallet.address)){
+            return {
+                ok:false,
+                reason:"Wallet already exists"
+            }
         }
-        const wallet = Wallet.generate(address, balance)
-        this.state.wallets[address] = wallet
-        return { ok: true, wallet }
+        this.state.wallets[wallet.address]=wallet
+        return {
+            ok:true,
+            wallet
+        }
     }
 
     getWallet(address) {

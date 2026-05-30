@@ -204,12 +204,19 @@ class Blockchain {
         return true
     }
 
-    async createWallet(address, balance = 0) {
-        const created = this.stateManager.createWallet(address, balance)
-        if (!created.ok) return { ok: false, reason: "Wallet already exists" }
-
+    async createWallet(balance=0){
+        const created=this.stateManager.createWallet(balance)
+        if(!created.ok){
+            return {
+                ok:false,
+                reason:created.reason
+            }
+        }
         await this.stateManager.saveState()
-        return { ok: true, wallet: this.stateManager.getWallet(address) }
+        return {
+            ok:true,
+            wallet:created.wallet
+        }
     }
 
     getWallet(address) {

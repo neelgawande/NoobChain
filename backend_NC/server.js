@@ -2,6 +2,9 @@ const express = require("express")
 const { chain, initPromise, isReady } = require("./services/noobchainService")
 const Transaction = require("./blockchain/Transaction")
 const cors = require("cors")
+const authService=require("./auth/AuthService")
+const {db}=require("./storage/LevelDB")
+const getTimestamp = require("./utils/timeStamp")
 
 const app = express()
 app.use(express.json())
@@ -175,7 +178,67 @@ app.get("/stats/difficulty", (req, res) => {
     }
 })
 
+/* user REGISTRY and AUTH */
+
+app.post("/register",async(req,res)=>{
+    try{
+        const {username,email,password}=req.body
+        if(!username||!email||!password){
+            return res.status(400).json({
+                ok:false,
+                reason:"missing username, email or password"
+            })
+        }
+        const result=await authService.register(
+            username,
+            email,
+            password
+        )
+        if(!result.ok){
+            return res.status(400).json(result)
+        }
+        res.json(result)
+    }catch(e){
+        res.status(500).json({
+            ok:false,
+            reason:e.message
+        })
+    }
+})
+app.get("/debug/user/:email",async(req,res)=>{
+    const user=await db.get(`user:${req.params.email}`)
+    res.json(user||null)
+})
+
+app.delete("/debug/user/:email",async(req,res)=>{
+    try{
+        const email=req.params.email
+        const user=await db.get(`user:${email}`)
+        if(!user){
+            return res.status(404).json({
+                ok:false,
+                reason:"User not found"
+            })
+        }
+        await db.del(`user:${email}`)
+        await db.del(`username:${user.username}`)
+        res.json({
+            ok:true,
+            message:`Deleted ${email}`
+        })
+    }catch(e){
+        res.status(500).json({
+            ok:false,
+            reason:e.message
+        })
+    }
+})
+
+
+
+/* user end */
 
 initPromise.then(() => {
-    app.listen(3000, () => console.log("API running on 3000, chain height:", chain.height))
+    app.listen(3000,() => console.log("API running on 3000, chain height:",chain.height,"timestamp:",getTimestamp()))
 })
+
