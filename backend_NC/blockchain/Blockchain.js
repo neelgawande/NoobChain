@@ -207,16 +207,10 @@ class Blockchain {
     async createWallet(balance=0){
         const created=this.stateManager.createWallet(balance)
         if(!created.ok){
-            return {
-                ok:false,
-                reason:created.reason
-            }
+            return {ok:false,reason:created.reason}
         }
         await this.stateManager.saveState()
-        return {
-            ok:true,
-            wallet:created.wallet
-        }
+        return {ok:true,wallet:created.wallet}
     }
 
     getWallet(address) {

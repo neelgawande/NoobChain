@@ -5,6 +5,8 @@ const cors = require("cors")
 const authService=require("./auth/AuthService")
 const {db}=require("./storage/LevelDB")
 const getTimestamp = require("./utils/timeStamp")
+const auth = require("./auth/authMiddleware")
+const Wallet = require("./blockchain/Wallet")
 
 const app = express()
 app.use(express.json())
@@ -182,18 +184,15 @@ app.get("/stats/difficulty", (req, res) => {
 
 app.post("/register",async(req,res)=>{
     try{
-        const {username,email,password}=req.body
+        const {username,email,password,initialBalance}=req.body
         if(!username||!email||!password){
             return res.status(400).json({
                 ok:false,
                 reason:"missing username, email or password"
             })
         }
-        const result=await authService.register(
-            username,
-            email,
-            password
-        )
+        const balance=initialBalance ?? 1000
+        const result=await authService.register(username,email,password,balance)
         if(!result.ok){
             return res.status(400).json(result)
         }
@@ -205,6 +204,7 @@ app.post("/register",async(req,res)=>{
         })
     }
 })
+
 app.get("/debug/user/:email",async(req,res)=>{
     const user=await db.get(`user:${req.params.email}`)
     res.json(user||null)
@@ -234,9 +234,123 @@ app.delete("/debug/user/:email",async(req,res)=>{
     }
 })
 
+app.post("/login",async(req,res)=>{
+    try{
+        const {email,password}=req.body
+
+        if(!email||!password){
+            return res.status(400).json({
+                ok:false,
+                reason:"missing email or password"
+            })
+        }
+        const result=await authService.login(email,password)
+        if(!result.ok){
+            return res.status(401).json(result)
+        }
+        res.json(result)
+    }catch(e){
+        res.status(500).json({
+            ok:false,
+            reason:e.message
+        })
+    }
+})
+
+// requires login. will send a GET request with the JWT. Will return all of the user's wallets
+app.get("/me/wallets",auth,async(req,res)=>{
+    try{
+        const email=req.user.email
+        const user=await db.get(`user:${email}`)
+        if(!user) return res.status(404).json({ok:false,reason:"user not found"})
+
+        res.json({
+            ok:true,
+            wallets:user.wallets || []
+        })
+    }catch(e){
+        res.status(500).json({ok:false,reason:e.message})
+    }
+})
+
+// creating additional wallet for logged-in user
+app.post("/me/wallets",auth,async(req,res)=>{
+    try{
+        const email=req.user.email
+        const user=await db.get(`user:${email}`)
+        if(!user) return res.status(404).json({ok:false,reason:"user not found"})
+        const wallet=Wallet.generate(`${email}_wallet_${Date.now()}`,1000)
+        user.wallets.push(wallet.address)
+        await db.put(`user:${email}`,user)
+        await chain.createWallet(wallet.address,wallet.balance)
+        res.json({
+            ok:true,
+            wallet
+        })
+    }catch(e){
+        res.status(500).json({ok:false,reason:e.message})
+    }
+})
+
+//to fix a bug we encountered. Probably will never use again
+app.post("/debug/fix-user-wallets/:email", async (req,res)=>{
+    try{
+        const user = await db.get(`user:${req.params.email}`)
+        if(!user) return res.status(404).json({ok:false,reason:"not found"})
+
+        user.wallets = user.wallets.map(w => typeof w === "string" ? w : w.address)
+
+        await db.put(`user:${req.params.email}`, user)
+
+        res.json({ok:true,user})
+    }catch(e){
+        res.status(500).json({ok:false,reason:e.message})
+    }
+})
+
+// to make a wallet the active wallet. request body takes in JSON with the address of the target wallet, and also JWT
+app.post("/me/wallets/active",auth,async(req,res)=>{
+    try{
+        const {address}=req.body
+        const user=await db.get(`user:${req.user.email}`)
+        if(!user.wallets.includes(address)){
+            return res.status(400).json({ok:false,reason:"wallet not owned by user"})
+        }
+        user.activeWallet = address
+        await db.put(`user:${req.user.email}`,user)
+        res.json({
+            ok:true,
+            activeWallet:address
+        })
+    }catch(e){
+        res.status(500).json({ok:false,reason:e.message})
+    }
+})
+
+// returns the active wallet of the user
+app.get("/me/wallets/active",auth,async(req,res)=>{
+    try{
+        const user=await db.get(`user:${req.user.email}`)
+        if(!user.activeWallet){
+            return res.status(404).json({ok:false,reason:"no active wallet set"})
+        }
+        const wallet=chain.getWallet(user.activeWallet)
+        if(!wallet){
+            return res.status(404).json({ok:false,reason:"active wallet not found in chain"})
+        }
+        res.json({
+            ok:true,
+            wallet
+        })
+    }
+    catch(e){
+        res.status(500).json({ok:false,reason:e.message})
+    }
+})
 
 
 /* user end */
+
 
 initPromise.then(() => {
     app.listen(3000,() => console.log("API running on 3000, chain height:",chain.height,"timestamp:",getTimestamp()))

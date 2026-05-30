@@ -5,6 +5,7 @@ class User{
         this.passwordHash=passwordHash
         this.role=role
         this.wallets=[]
+        this.activeWallet=null
     }
 }
 
