@@ -13,18 +13,20 @@ class Transaction {
     }
 
     calculateHash(){
-        return sha256(this.from + this.to + this.amount + this.nonce + this.timestamp)
+        return sha256(this.from +"|"+ this.to +"|"+ this.amount +"|"+ this.nonce +"|"+ this.timestamp).toString()
     }
 
     signTransaction(privateKey){
         const sign = crypto.createSign("SHA256")
-        sign.update(this.txid)
+        const message = this.calculateHash()
+        sign.update(message)
         sign.end()
         this.signature = sign.sign(privateKey,"hex")
+        this.txid = message
     }
 
     verifySignature(publicKey){
-        if(!this.signature) return false
+        if(!this.signature || !this.txid) return false
         const verify = crypto.createVerify("SHA256")
         verify.update(this.txid)
         verify.end()
@@ -33,8 +35,9 @@ class Transaction {
 
     basicValidate(){
         if(!this.from || !this.to) return false
-        if(typeof this.amount !== "number" || this.amount <= 0) return false
-        if(typeof this.nonce !== "number") return false
+        if(typeof this.amount !== "number" || !Number.isInteger(this.amount) || this.amount <= 0) return false
+        if(typeof this.nonce !== "number" || !Number.isInteger(this.nonce) || this.nonce < 1) return false
+        if (typeof this.timestamp !== "number" || this.timestamp <= 0) return false
         return true
     }
 
