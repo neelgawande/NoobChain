@@ -2,7 +2,6 @@ const express = require("express")
 const { chain } = require("../services/noobchainService")
 const {db}=require("../storage/LevelDB")
 
-
 const router=express.Router()
 
 
@@ -48,6 +47,31 @@ router.post("/debug/fix-user-wallets/:email", async (req,res)=>{
         res.json({ok:true,user})
     }catch(e){
         res.status(500).json({ok:false,reason:e.message})
+    }
+})
+
+// BOOTSTRAP GOD ROUTE - NEVER USE THIS
+
+router.post("/debug/bootstrap-god",async(req,res)=>{
+    try{
+        const {username,email,password}=req.body
+
+        const result=await authService.register(
+            username,
+            email,
+            password,
+            1000,
+            "god"
+        )
+        if(!result.ok){
+            return res.status(400).json(result)
+        }
+        res.json(result)
+    }catch(e){
+        res.status(500).json({
+            ok:false,
+            reason:e.message
+        })
     }
 })
 

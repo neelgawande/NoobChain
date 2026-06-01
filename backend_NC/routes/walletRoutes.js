@@ -1,7 +1,7 @@
 const express = require("express")
 const { chain } = require("../services/noobchainService")
 const {db}=require("../storage/LevelDB")
-const auth = require("../auth/authMiddleware")
+const auth = require("../middleware/authMiddleware")
 
 const router=express.Router()
 
@@ -86,6 +86,22 @@ router.get("/me/wallets/active",auth,async(req,res)=>{
         })
     }
     catch(e){
+        res.status(500).json({ok:false,reason:e.message})
+    }
+})
+
+// returns all of the user's information
+router.get("/me",auth,async(req,res)=>{
+    try{
+        const email=req.user.email
+        const user=await db.get(`user:${email}`)
+        if(!user) return res.status(404).json({ok:false,reason:"user not found"})
+
+        res.json({
+            ok:true,
+            info:user
+        })
+    }catch(e){
         res.status(500).json({ok:false,reason:e.message})
     }
 })

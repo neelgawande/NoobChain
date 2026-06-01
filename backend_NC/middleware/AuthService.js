@@ -5,7 +5,7 @@ const {chain}=require("../services/noobchainService")
 const {signToken}=require("./jwt")
 
 class AuthService{
-    async register(username,email,password,initialBalance=1000){
+    async register(username,email,password,initialBalance=1000,role="user"){
         const existingEmail=await db.get(`user:${email}`)
         if(existingEmail){
             return {
@@ -21,7 +21,7 @@ class AuthService{
             }
         }
         const passwordHash=await bcrypt.hash(password,10)
-        const user=new User(username,email,passwordHash)
+        const user=new User(username,email,passwordHash,role)
         const walletResult=await chain.createWallet(initialBalance)
         if(!walletResult.ok){
             return walletResult
