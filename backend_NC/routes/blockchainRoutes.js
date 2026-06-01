@@ -48,7 +48,7 @@ router.post("/tx", async (req, res) => {
     }
 })
 
-router.post("/mine", async (req, res) => {
+router.post("/mine", async (req, res) => { // TODO: add auth and adminOnly middleware once the frontend changes
     try {
         await chain.addBlock()
         res.json({ ok: true, height: chain.height })

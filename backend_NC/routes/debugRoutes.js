@@ -34,22 +34,6 @@ router.delete("/debug/user/:email",async(req,res)=>{
     }
 })
 
-//to fix a bug we encountered. Probably will never use again
-router.post("/debug/fix-user-wallets/:email", async (req,res)=>{
-    try{
-        const user = await db.get(`user:${req.params.email}`)
-        if(!user) return res.status(404).json({ok:false,reason:"not found"})
-
-        user.wallets = user.wallets.map(w => typeof w === "string" ? w : w.address)
-
-        await db.put(`user:${req.params.email}`, user)
-
-        res.json({ok:true,user})
-    }catch(e){
-        res.status(500).json({ok:false,reason:e.message})
-    }
-})
-
 // BOOTSTRAP GOD ROUTE - NEVER USE THIS
 
 router.post("/debug/bootstrap-god",async(req,res)=>{
