@@ -192,6 +192,9 @@ app.post("/register",async(req,res)=>{
             })
         }
         const balance=initialBalance ?? 1000
+        if(typeof balance !== "number" || !Number.isInteger(balance) || balance <=0) {
+            return res.status(400).json({ ok: false, reason: "initialBalance must be a positive integer" })
+        }
         const result=await authService.register(username,email,password,balance)
         if(!result.ok){
             return res.status(400).json(result)
@@ -276,19 +279,29 @@ app.get("/me/wallets",auth,async(req,res)=>{
 // creating additional wallet for logged-in user
 app.post("/me/wallets",auth,async(req,res)=>{
     try{
-        const email=req.user.email
-        const user=await db.get(`user:${email}`)
-        if(!user) return res.status(404).json({ok:false,reason:"user not found"})
-        const wallet=Wallet.generate(`${email}_wallet_${Date.now()}`,1000)
-        user.wallets.push(wallet.address)
-        await db.put(`user:${email}`,user)
-        await chain.createWallet(wallet.address,wallet.balance)
+        const {initialBalance}=req.body
+        const user=await db.get(`user:${req.user.email}`)
+        const balance=initialBalance ?? 1000
+        if(typeof balance !== "number" || !Number.isInteger(balance) || balance <=0) {
+            return res.status(400).json({ ok: false, reason: "initialBalance must be a positive integer" })
+        }
+        
+        const walletResult=await chain.createWallet(balance)
+        if(!walletResult.ok){
+            return res.status(400).json(walletResult)
+        }
+        user.wallets.push(walletResult.wallet.address)
+        await db.put(`user:${req.user.email}`,user)
         res.json({
             ok:true,
-            wallet
+            added:walletResult.wallet.address,
+            wallets:user.wallets
         })
     }catch(e){
-        res.status(500).json({ok:false,reason:e.message})
+        res.status(500).json({
+            ok:false,
+            reason:e.message
+        })
     }
 })
 
@@ -345,6 +358,52 @@ app.get("/me/wallets/active",auth,async(req,res)=>{
     }
     catch(e){
         res.status(500).json({ok:false,reason:e.message})
+    }
+})
+
+// to delete a user's wallet - requires login from the user side
+app.delete("/me/wallets",auth,async(req,res)=>{
+    try{
+        const {address}=req.body
+        if(!address){
+            return res.status(400).json({
+                ok:false,
+                reason:"missing wallet address"
+            })
+        }
+
+        const user=await db.get(`user:${req.user.email}`)
+        if(!user){
+            return res.status(404).json({
+                ok:false,
+                reason:"user not found"
+            })
+        }
+        if(!user.wallets.includes(address)){
+            return res.status(400).json({
+                ok:false,
+                reason:"wallet not owned by user"
+            })
+        }
+        delete chain.stateManager.state.wallets[address]
+        user.wallets=user.wallets.filter(w=>w!==address)
+        if(user.activeWallet===address){
+            user.activeWallet=user.wallets.length>0
+                ? user.wallets[0]
+                : null
+        }
+        await chain.stateManager.saveState()
+        await db.put(`user:${user.email}`,user)
+        res.json({
+            ok:true,
+            deletedWallet:address,
+            activeWallet:user.activeWallet
+        })
+    }catch(e){
+        res.status(500).json({
+            ok:false,
+            reason:e.message
+        })
     }
 })
 
