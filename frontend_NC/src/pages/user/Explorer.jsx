@@ -1,6 +1,6 @@
 import {useEffect,useState} from "react"
-import {getChain} from "../api/blockchain"
-import BlockCard from "../components/BlockCard"
+import {getChain} from "../../api/blockchain"
+import BlockCard from "../../components/BlockCard"
 
 export default function Explorer(){
     const [chain,setChain] = useState([])
