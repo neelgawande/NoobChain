@@ -10,9 +10,16 @@ export default function Explorer(){
         async function loadChain(){
             try{
                 const data = await getChain()
-                setChain(data.reverse())
+
+                if(Array.isArray(data)){
+                    setChain([...data].reverse())
+                }else{
+                    setChain([])
+                }
+
             }catch(err){
                 console.error(err)
+                setChain([])
             }finally{
                 setLoading(false)
             }

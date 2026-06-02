@@ -1,8 +1,10 @@
-import {useRef,useState} from "react"
+import {useRef,useState} from "react" 
+import {useNavigate} from "react-router-dom"
 
 export default function BlockCard({block}){
     const [expanded,setExpanded] = useState(false)
     const txRef = useRef(null)
+    const navigate = useNavigate()
 
     function toggleTransactions(){
         const next = !expanded
@@ -28,7 +30,7 @@ export default function BlockCard({block}){
                     </h2>
 
                     <p className="text-zinc-400 text-sm mt-1">
-                        {block.transactions.length} transactions
+                        {block.transactions?.length || 0} transactions
                     </p>
                 </div>
 
@@ -58,7 +60,7 @@ export default function BlockCard({block}){
                     </p>
 
                     <p className="text-sm text-zinc-300">
-                        {block.header.prevHash}
+                        {block.header?.prevHash}
                     </p>
                 </div>
 
@@ -68,7 +70,7 @@ export default function BlockCard({block}){
                     </p>
 
                     <p className="text-sm text-zinc-300">
-                        {block.header.merkleRoot}
+                        {block.header?.merkleRoot}
                     </p>
                 </div>
 
@@ -78,7 +80,7 @@ export default function BlockCard({block}){
                     </p>
 
                     <p className="text-sm text-zinc-300">
-                        {block.header.nonce}
+                        {block.header?.nonce}
                     </p>
                 </div>
 
@@ -93,15 +95,15 @@ export default function BlockCard({block}){
 
                     <div className="space-y-4">
 
-                        {block.transactions.length===0 && (
+                        {(!block.transactions || block.transactions.length===0) && (
                             <div className="text-zinc-500">
                                 No transactions
                             </div>
                         )}
 
-                        {block.transactions.map((tx,i)=>(
+                        {block.transactions?.map((tx,i)=>(
                             <div
-                                key={i}
+                                key={tx.txid || i}
                                 className="bg-zinc-950 border border-zinc-800 rounded-xl p-5"
                             >
                                 <div className="space-y-3 break-all">
@@ -109,9 +111,11 @@ export default function BlockCard({block}){
                                     <div>
                                         <span className="font-bold text-white">
                                             From:
-                                        </span>
-                                        {" "}
-                                        <span className="text-zinc-300">
+                                        </span>{" "}
+                                        <span
+                                            className="text-blue-400 cursor-pointer hover:underline"
+                                            onClick={()=>navigate(`/wallet/${tx.from}`)}
+                                        >
                                             {tx.from}
                                         </span>
                                     </div>
@@ -119,9 +123,11 @@ export default function BlockCard({block}){
                                     <div>
                                         <span className="font-bold text-white">
                                             To:
-                                        </span>
-                                        {" "}
-                                        <span className="text-zinc-300">
+                                        </span>{" "}
+                                        <span
+                                            className="text-blue-400 cursor-pointer hover:underline"
+                                            onClick={()=>navigate(`/wallet/${tx.to}`)}
+                                        >
                                             {tx.to}
                                         </span>
                                     </div>
@@ -129,8 +135,7 @@ export default function BlockCard({block}){
                                     <div>
                                         <span className="font-bold text-white">
                                             Amount:
-                                        </span>
-                                        {" "}
+                                        </span>{" "}
                                         <span className="text-zinc-300">
                                             {tx.amount}
                                         </span>

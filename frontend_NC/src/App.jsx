@@ -8,6 +8,8 @@ import Login from "./pages/public/Login"
 import Register from "./pages/public/Register"
 import ProtectedRoute from "./components/layout/ProtectedRoute"
 import Wallets from "./pages/user/Wallets"
+import CreateWallet from "./pages/user/CreateWallet"
+import WalletDetail from "./pages/user/WalletDetail"
 
 function App() {
 
@@ -32,6 +34,8 @@ function App() {
                     <Route path="send" element={<SendTransaction/>}/>
                     <Route path="mine" element={<Mine/>}/>
                     <Route path="wallets" element={<Wallets/>}/>
+                    <Route path="wallets/create" element={<CreateWallet/>}/>
+                    <Route path="wallet/:address" element={<WalletDetail/>}/>
                 </Route>
 
             </Routes>
