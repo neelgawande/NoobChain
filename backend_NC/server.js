@@ -1,7 +1,17 @@
 const express = require("express")
 const { chain, initPromise, isReady } = require("./services/noobchainService")
-const Transaction = require("./blockchain/Transaction")
 const cors = require("cors")
+const getTimestamp = require("./utils/timeStamp")
+
+
+const authRoutes=require("./routes/authRoutes")
+const walletRoutes=require("./routes/walletRoutes")
+const blockchainRoutes=require("./routes/blockchainRoutes")
+const statsRoutes=require("./routes/statsRoutes")
+const debugRoutes=require("./routes/debugRoutes")
+const adminRoutes=require("./routes/adminRoutes")
+
+
 
 const app = express()
 app.use(express.json())
@@ -14,168 +24,16 @@ app.use((req, res, next) => {
     next()
 })
 
-app.post("/init", async (req, res) => {
-    try {
-        res.json({ ok: true, height: chain.height })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
+app.use(authRoutes)
+app.use(walletRoutes)
+app.use(blockchainRoutes)
+app.use(statsRoutes)
+app.use(debugRoutes)
+app.use(adminRoutes)
 
-app.post("/wallet", async (req, res) => {
-    try {
-        const { address, balance } = req.body
-        if (!address) return res.status(400).json({ ok: false, reason: "missing address" })
-
-        const result = await chain.createWallet(address, balance || 0)
-        if (!result.ok) return res.status(400).json(result)
-
-        res.json(result)
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.post("/tx", async (req, res) => {
-    try {
-        const { from, to, amount, privateKey, signature } = req.body
-
-        if (!from || !to || amount === undefined) {
-            return res.status(400).json({ ok: false, reason: "missing from, to, or amount" })
-        }
-
-        if (typeof amount !== "number" || !Number.isInteger(amount) || amount <= 0) {
-            return res.status(400).json({ ok: false, reason: "amount must be a positive integer" })
-        }
-
-        const sender = chain.getWallet(from)
-        if (!sender) return res.status(404).json({ ok: false, reason: "sender wallet not found" })
-
-        const pendingFromSender = chain.pendingTransactions.filter(t => t.from === from).length
-        const nonce = sender.nonce + 1 + pendingFromSender
-
-        const tx = new Transaction(from, to, amount, nonce)
-
-        if (privateKey) {
-            // Normalize the PEM key — when pasted from a JSON value or typed manually,
-            // literal "\n" two-character sequences arrive instead of real newlines.
-            // Node's crypto decoder requires actual newlines in the PEM header,
-            // footer, and between base64 lines or it throws "unsupported" decoder error.
-            const normalizedKey = privateKey.replace(/\\n/g, "\n").trim()
-            tx.signTransaction(normalizedKey)
-        } else if (signature) {
-            tx.signature = signature
-        } else {
-            return res.status(400).json({ ok: false, reason: "missing privateKey or signature" })
-        }
-
-        const result = await chain.addTransaction(tx)
-        if (!result.ok) return res.status(400).json(result)
-
-        res.json({ ok: true, txid: tx.txid, nonce: tx.nonce })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.post("/mine", async (req, res) => {
-    try {
-        await chain.addBlock()
-        res.json({ ok: true, height: chain.height })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/chain", async (req, res) => {
-    try {
-        const data = await chain.getFullChain()
-        res.json(data)
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/wallet/:address", async (req, res) => {
-    try {
-        const wallet = chain.getWallet(req.params.address)
-        if (!wallet) return res.status(404).json({ ok: false, reason: "not found" })
-
-        const pendingFromWallet = chain.pendingTransactions.filter(t => t.from === req.params.address).length
-        res.json({
-            address: wallet.address,
-            balance: wallet.balance,
-            nonce: wallet.nonce,
-            nextNonce: wallet.nonce + 1 + pendingFromWallet,
-            // privateKey intentionally not omitted: I ain't gonna write down everyone's private keys just for doing some transactions
-            privateKey: wallet.privateKey
-        })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/stats", async (req, res) => {
-    try {
-        const data = await chain.getFullChain()
-        const totalTransactions = data.reduce((sum, block) => sum + (block.transactions?.length || 0), 0)
-        res.json({
-            totalBlocks: data.length,
-            totalTransactions,
-            pendingTransactions: chain.pendingTransactions.length,
-            totalWallets: Object.keys(chain.stateManager.state.wallets).length,
-            difficulty: chain.difficulty,
-            height: chain.height
-        })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/stats/blocks", async (req, res) => {
-    try {
-        const data = await chain.getFullChain()
-        res.json({ totalBlocks: data.length })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/stats/transactions", async (req, res) => {
-    try {
-        const data = await chain.getFullChain()
-        const totalTransactions = data.reduce((sum, block) => sum + (block.transactions?.length || 0), 0)
-        res.json({ totalTransactions })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/stats/pending", (req, res) => {
-    try {
-        res.json({ pendingTransactions: chain.pendingTransactions.length })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/stats/wallets", (req, res) => {
-    try {
-        res.json({ totalWallets: Object.keys(chain.stateManager.state.wallets).length })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
-
-app.get("/stats/difficulty", (req, res) => {
-    try {
-        res.json({ difficulty: chain.difficulty })
-    } catch (e) {
-        res.status(500).json({ ok: false, reason: e.message })
-    }
-})
 
 
 initPromise.then(() => {
-    app.listen(3000, () => console.log("API running on 3000, chain height:", chain.height))
+    app.listen(3000,() => console.log("API running on 3000, chain height:",chain.height,"timestamp:",getTimestamp()))
 })
+

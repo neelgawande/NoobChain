@@ -34,12 +34,14 @@ class StateManager {
         return !!this.state.wallets[address]
     }
 
-    createWallet(address, balance = 0) {
-        if (this.walletExists(address)) {
+    createWallet(balance = 0) {
+        const wallet = Wallet.generate(balance)
+        // Address is derived from the public key hash so collisions are
+        // astronomically unlikely, but we guard anyway.
+        if (this.walletExists(wallet.address)) {
             return { ok: false, reason: "Wallet already exists" }
         }
-        const wallet = Wallet.generate(address, balance)
-        this.state.wallets[address] = wallet
+        this.state.wallets[wallet.address] = wallet
         return { ok: true, wallet }
     }
 
