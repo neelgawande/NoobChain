@@ -106,4 +106,24 @@ router.get("/me",auth,async(req,res)=>{
     }
 })
 
+//returns all of the users wallets along with all of their information
+router.get("/me/wallets/all",auth,async(req,res)=>{
+    try{
+        const user=await db.get(`user:${req.user.email}`)
+
+        const wallets=user.wallets
+            .map(address=>chain.getWallet(address))
+            .filter(wallet=>wallet)
+
+        res.json({
+            ok:true,
+            wallets
+        })
+    }catch(e){
+        res.status(500).json({
+            ok:false,
+            reason:e.message
+        })
+    }
+})
 module.exports=router
