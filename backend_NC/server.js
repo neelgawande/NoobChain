@@ -9,6 +9,7 @@ const walletRoutes=require("./routes/walletRoutes")
 const blockchainRoutes=require("./routes/blockchainRoutes")
 const statsRoutes=require("./routes/statsRoutes")
 const debugRoutes=require("./routes/debugRoutes")
+const adminRoutes=require("./routes/adminRoutes")
 
 
 
@@ -28,6 +29,7 @@ app.use(walletRoutes)
 app.use(blockchainRoutes)
 app.use(statsRoutes)
 app.use(debugRoutes)
+app.use(adminRoutes)
 
 
 

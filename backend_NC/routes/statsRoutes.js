@@ -3,7 +3,6 @@ const { chain } = require("../services/noobchainService")
 
 const router=express.Router()
 
-
 router.get("/stats", async (req, res) => {
     try {
         const data = await chain.getFullChain()
