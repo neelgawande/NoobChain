@@ -1,44 +1,59 @@
 import {useState} from "react"
 import {useAuth} from "../../context/AuthContext"
+import {useNavigate, Link} from "react-router-dom"
 
 function Login(){
 
-    const {login}=useAuth()
+    const {login} = useAuth()
+    const navigate = useNavigate()
 
-    const [email,setEmail]=useState("")
-    const [password,setPassword]=useState("")
-    const [error,setError]=useState("")
+    const [email,setEmail] = useState("")
+    const [password,setPassword] = useState("")
+    const [error,setError] = useState("")
+    const [loading,setLoading] = useState(false)
 
     async function handleSubmit(e){
         e.preventDefault()
 
         setError("")
+        setLoading(true)
 
         try{
-            const res=await fetch("http://localhost:3000/login",{
+            const res = await fetch("http://localhost:3000/login",{
                 method:"POST",
                 headers:{
                     "Content-Type":"application/json"
                 },
-                body:JSON.stringify({
-                    email,
-                    password
-                })
+                body:JSON.stringify({email,password})
             })
 
-            const data=await res.json()
+            const data = await res.json()
 
             if(!data.ok){
-                setError(data.reason)
+                setError(data.reason || "Login failed")
+                setLoading(false)
                 return
             }
 
-            login(data.token,data.user)
+            const meRes = await fetch("http://localhost:3000/me",{
+                headers:{Authorization:data.token}
+            })
 
-            console.log("logged in",data.user)
+            const meData = await meRes.json()
+
+            if(!meData.ok){
+                setError("Failed to load user after login")
+                setLoading(false)
+                return
+            }
+
+            login(data.token,meData.info)
+            navigate("/")
 
         }catch(e){
             setError(e.message)
+        }finally{
+            setLoading(false)
         }
     }
 
@@ -47,26 +62,22 @@ function Login(){
             <h1>Login</h1>
 
             <form onSubmit={handleSubmit}>
-                <input
-                    type="email"
-                    value={email}
-                    onChange={e=>setEmail(e.target.value)}
-                    placeholder="email"
-                />
+                <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email"/>
+                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="password"/>
 
-                <input
-                    type="password"
-                    value={password}
-                    onChange={e=>setPassword(e.target.value)}
-                    placeholder="password"
-                />
-
-                <button type="submit">
-                    Login
+                <button type="submit" disabled={loading}>
+                    {loading ? "Logging in..." : "Login"}
                 </button>
             </form>
 
-            {error&&<p>{error}</p>}
+            {error && <p>{error}</p>}
+
+            <p className="mt-4">
+                Don’t have an account?{" "}
+                <Link to="/register" className="text-pink-300 underline">
+                    Register here
+                </Link>
+            </p>
         </div>
     )
 }

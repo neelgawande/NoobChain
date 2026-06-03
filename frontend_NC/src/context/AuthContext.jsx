@@ -1,46 +1,61 @@
 import { createContext, useContext, useEffect, useState } from "react"
 
-const AuthContext=createContext()
+const AuthContext = createContext()
 
 export function AuthProvider({children}){
-    const [token,setToken]=useState(localStorage.getItem("token"))
-    const [user,setUser]=useState(null)
-    const [loading,setLoading]=useState(true)
+
+    const [token,setToken] = useState(localStorage.getItem("token"))
+    const [user,setUser] = useState(null)
+    const [loading,setLoading] = useState(true)
 
     useEffect(()=>{
+
         async function loadUser(){
+
             if(!token){
                 setUser(null)
                 setLoading(false)
                 return
             }
+
             try{
-                const res=await fetch("http://localhost:3000/me",{
-                    headers:{
-                        Authorization:token
-                    }
+
+                const res = await fetch("http://localhost:3000/me",{
+                    headers:{Authorization:token}
                 })
-                const data=await res.json()
-                if(data.ok===false){
+
+                const data = await res.json()
+
+                if(!data?.ok){
                     localStorage.removeItem("token")
                     setToken(null)
                     setUser(null)
-                }else{
-                    setUser(data)
+                    setLoading(false)
+                    return
                 }
+
+                // IMPORTANT FIX: normalize shape
+                setUser(data.info)
+
             }catch{
+                localStorage.removeItem("token")
+                setToken(null)
                 setUser(null)
             }
 
             setLoading(false)
         }
+
         loadUser()
+
     },[token])
-    
-    function login(token,user){
-        localStorage.setItem("token",token)
-        setToken(token)
-        setUser(user)
+
+    function login(newToken,userData){
+        localStorage.setItem("token",newToken)
+        setToken(newToken)
+
+        // IMPORTANT FIX: ensure same structure everywhere
+        setUser(userData)
     }
 
     function logout(){
@@ -48,6 +63,7 @@ export function AuthProvider({children}){
         setToken(null)
         setUser(null)
     }
+
     return(
         <AuthContext.Provider value={{
             token,
@@ -55,7 +71,7 @@ export function AuthProvider({children}){
             loading,
             login,
             logout,
-            isAuthenticated:!!token
+            isAuthenticated: !!token
         }}>
             {children}
         </AuthContext.Provider>

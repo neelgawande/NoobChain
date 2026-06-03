@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute"
 import Wallets from "./pages/user/Wallets"
 import CreateWallet from "./pages/user/CreateWallet"
 import WalletDetail from "./pages/user/WalletDetail"
+import BlockDetail from "./pages/user/BlockDetail"
 
 function App() {
 
@@ -36,6 +37,7 @@ function App() {
                     <Route path="wallets" element={<Wallets/>}/>
                     <Route path="wallets/create" element={<CreateWallet/>}/>
                     <Route path="wallet/:address" element={<WalletDetail/>}/>
+                    <Route path="block/:height" element={<BlockDetail/>}/>
                 </Route>
 
             </Routes>
