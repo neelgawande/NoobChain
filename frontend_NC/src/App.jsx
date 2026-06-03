@@ -7,6 +7,7 @@ import Mine from "./pages/admin/Mine"
 import Login from "./pages/public/Login"
 import Register from "./pages/public/Register"
 import ProtectedRoute from "./components/layout/ProtectedRoute"
+import AuthRoute from "./components/layout/AuthRoute"
 import Wallets from "./pages/user/Wallets"
 import CreateWallet from "./pages/user/CreateWallet"
 import WalletDetail from "./pages/user/WalletDetail"
@@ -15,13 +16,29 @@ import BlockDetail from "./pages/user/BlockDetail"
 function App() {
 
     return (
-        <>
-
-         <BrowserRouter>
+        <BrowserRouter>
             <Routes>
-                <Route path="/login" element={<Login/>}/>
-                <Route path="/register" element={<Register/>}/>
 
+                {/* PUBLIC ONLY (blocked if logged in) */}
+                <Route
+                    path="/login"
+                    element={
+                        <AuthRoute>
+                            <Login/>
+                        </AuthRoute>
+                    }
+                />
+
+                <Route
+                    path="/register"
+                    element={
+                        <AuthRoute>
+                            <Register/>
+                        </AuthRoute>
+                    }
+                />
+
+                {/* PROTECTED APP */}
                 <Route
                     path="/"
                     element={
@@ -42,7 +59,6 @@ function App() {
 
             </Routes>
         </BrowserRouter>
-        </>
     )
 }
 
