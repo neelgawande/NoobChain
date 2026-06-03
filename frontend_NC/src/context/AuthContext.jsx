@@ -10,11 +10,15 @@ export function AuthProvider({children}){
 
     useEffect(()=>{
 
+        let isMounted = true
+
         async function loadUser(){
 
             if(!token){
-                setUser(null)
-                setLoading(false)
+                if(isMounted){
+                    setUser(null)
+                    setLoading(false)
+                }
                 return
             }
 
@@ -28,33 +32,40 @@ export function AuthProvider({children}){
 
                 if(!data?.ok){
                     localStorage.removeItem("token")
-                    setToken(null)
-                    setUser(null)
-                    setLoading(false)
+                    if(isMounted){
+                        setToken(null)
+                        setUser(null)
+                        setLoading(false)
+                    }
                     return
                 }
 
-                // IMPORTANT FIX: normalize shape
-                setUser(data.info)
+                if(isMounted){
+                    setUser(data.info)
+                }
 
             }catch{
                 localStorage.removeItem("token")
-                setToken(null)
-                setUser(null)
+                if(isMounted){
+                    setToken(null)
+                    setUser(null)
+                }
+            }finally{
+                if(isMounted){
+                    setLoading(false)
+                }
             }
-
-            setLoading(false)
         }
 
         loadUser()
+
+        return ()=>{ isMounted = false }
 
     },[token])
 
     function login(newToken,userData){
         localStorage.setItem("token",newToken)
         setToken(newToken)
-
-        // IMPORTANT FIX: ensure same structure everywhere
         setUser(userData)
     }
 
@@ -71,7 +82,9 @@ export function AuthProvider({children}){
             loading,
             login,
             logout,
-            isAuthenticated: !!token
+
+            // FIX: proper auth signal
+            isAuthenticated: !!user
         }}>
             {children}
         </AuthContext.Provider>
